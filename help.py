@@ -93,7 +93,7 @@ for i in range(N):
     #print(G2)
     alpha = min(1, correction)
     assert((np.isnan(correction)==False))
-    #assert((correction<=1) and (correction>=0))
+    assert((correction<=1) and (correction>=0))
     
     if ((np.random.uniform(0,1)<= alpha)):
         previous = current
