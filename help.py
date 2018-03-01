@@ -33,41 +33,48 @@ ht_guess = np.full(T,0.6)
 #         SAMPLING OF THETA - POSTERIOR DISTRIBUTION
 #--------------------
 def var_eta_func(ht,mu):
-    
-    A = 0.5*sum(((ht-mu)**2))
-    y = invgamma.rvs(T/2, scale = A)
-    #print(y,'var')
+    A = 0.5*np.sum(((ht-mu)**2))
+    y = invgamma.rvs((T/2), scale = A)
+    assert((np.isnan(y)==False))
+    assert((y>=0 and y<=1.5))
     return y
     
 def mu_func(ht,sigma_eta):   
-    C = sum(ht)
+    C = np.sum(ht)
     B = T
     y = np.random.normal(C/B,sigma_eta/np.sqrt(B))
+    assert((np.isnan(y)==False))
     return y
 
-def ht_func(ht, mu, sigma_eta):
-    
+def ht_func(ht, mu, sigma_eta):    
     ht_new = np.copy(ht)
-    proposal = np.random.normal(mu,sigma_eta,T)
-    
+    proposal = np.random.normal(mu,sigma_eta,T)  
     ht_cur = (-0.5)*(proposal + (y_t**2)/np.exp(proposal))
     ht_prev = (-0.5)*(ht + (y_t**2)/np.exp(ht))
     alpha = np.exp((ht_cur - ht_prev))
-    y = np.random.uniform(0,1)
+    y = np.random.uniform(0,1,T)
     ind = np.where(((alpha>=1) | ((alpha<=1) & (y<=alpha))))
     ht_new[ind] = proposal[ind]
+    assert((np.size(ht_cur)==np.size(ht_prev)==np.size(alpha)== T))
+    assert((np.isnan(alpha.any())==False))
     return ht_new
 #--------------------
 #         LIKELIHOOD FUNCTION
 #--------------------
 #def likelihood_func(ht,mu,var):
-#    f_et_ot = -0.5*((ht) + ((y_t**2)/np.exp(ht)))
-#    f_ht_theta = -0.5*(np.log(var) + ((ht - mu)**2/var))
-#    y = (f_et_ot + f_ht_theta)
-#    return y, f_et_ot, f_ht_theta
+##    f_et_ot = -0.5*((ht) + ((y_t**2)/np.exp(ht)))
+##    f_ht_theta = -0.5*(np.log(var) + ((ht - mu)**2/var))
+##    y = (f_et_ot + f_ht_theta)   
+#    i = np.sum(-0.5*ht - (y_t**2/(2*np.exp(ht))) - \
+#        0.5*np.log(var) - (ht-mu)**2/(2*var))
+#    y = i - np.log(var)   
+#    return y
 def likelihood_func(ht,mu,var):  
-    y= -1*(ht/2) + ((y_t**2/2)*np.exp(-1*ht)) +\
-        (-(T/2)-1)*np.log(var) - ((ht - mu)**2/(2*var))
+    y= np.sum(-(ht/2) + ((y_t**2/2)*np.exp(-ht)) +\
+         - ((ht - mu)**2/(2*var))) +(-(T/2)-1)*np.log(var)
+#    y = np.sum(-0.5*ht - (y_t**2/(2*np.exp(ht))) \
+#         - (ht-mu)**2/(2*var)) - ((T/2)-1)*np.log(var)
+    #assert((np.isnan(y)==False))
     return y
 #--------------------
 #         GlOBAL ACCEPT REJECT STEP
@@ -82,20 +89,13 @@ for i in range(N):
     current = likelihood_func(new_ht, new_mu, new_var)
     mean[i] = new_mu
     stdv[i] = new_var
-    heo = np.sum((current - previous))
-   # print(heo)
-#    u  = sigma_eta_guess**2
-    correction = np.exp(heo) 
-    #G1 = (current - previous)  
-    #G2 = np.log(new_var**-1) - np.log((sigma_eta_guess**2)**-1)
-    #correction = np.exp(G1)*((sigma_eta_guess**2)/(new_var**(-1)))
-    #*np.exp(G2)
-    #print(G2)
+    exponent = current - previous
+    correction = np.exp(exponent) 
     alpha = min(1, correction)
     assert((np.isnan(correction)==False))
-    assert((correction<=1) and (correction>=0))
+    #assert((correction<=1) and (correction>=0))
     
-    if ((np.random.uniform(0,1)<= alpha)):
+    if ((np.random.uniform(0,1)<= alpha) or i<10):
         previous = current
         ht_guess = new_ht 
         mu_guess = new_mu 
@@ -109,12 +109,10 @@ for i in range(N):
 ##--------------------
 ##         PLOT GRAPHS
 ##--------------------  
-#t = np.linspace(0,N,N)  
-#py.figure(figsize=(20,10))
-##py.xlim(t[1*N/5],N)
-#py.plot(t,mean)
-
-#print((plot_ht(t)))
+t = np.linspace(0,N,N)  
+py.figure(figsize=(20,10))
+#py.xlim(t[1*N/5],N)
+py.plot(t,mean)
 py.show()
 
 
