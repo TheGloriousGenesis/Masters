@@ -3,6 +3,29 @@
 Created on Tue Feb 27 22:41:38 2018
 
 @author: Ana
+Extra stuff:
+
+    #ht_test = np.full(T,0.1)
+    #mu_test = -1
+    #sigma_test = np.sqrt(0.2)
+    #yt_test = np.full(T,0.3)
+    #
+    #test = likelihood_func(ht_test,mu_test,sigma_test**2,yt_test)
+    #print(test)
+
+    #def likelihood_func(ht,mu,var):
+    ##    f_et_ot = -0.5*((ht) + ((y_t**2)/np.exp(ht)))
+    ##    f_ht_theta = -0.5*(np.log(var) + ((ht - mu)**2/var))
+    ##    y = (f_et_ot + f_ht_theta)   
+    #    i = np.sum(-0.5*ht - (y_t**2/(2*np.exp(ht))) - \
+    #        0.5*np.log(var) - (ht-mu)**2/(2*var))
+    #    y = i - np.log(var)   
+    #    return y
+
+    #    y = np.sum(-0.5*ht - (y_t**2/(2*np.exp(ht))) \
+    #         - (ht-mu)**2/(2*var)) - ((T/2)-1)*np.log(var)
+    #assert((np.isnan(y)==False))
+
 """
 
 import numpy as np
@@ -10,11 +33,11 @@ from matplotlib import pyplot as py
 from scipy.stats import invgamma
 
 T = 5000
-N = 10000
+N = 30000
 mean = np.zeros(N)
 stdv = np.zeros(N)
 mu_mock = -1
-sigma_eta_mock = np.sqrt(0.05)
+sigma_eta_mock = np.sqrt(0.5)
 #--------------------
 #         ARTIFICAL TIME SERIES
 #--------------------
@@ -36,7 +59,6 @@ def var_eta_func(ht,mu):
     A = 0.5*np.sum(((ht-mu)**2))
     y = invgamma.rvs((T/2), scale = A)
     assert((np.isnan(y)==False))
-    assert((y>=0 and y<=1.5))
     return y
     
 def mu_func(ht,sigma_eta):   
@@ -59,59 +81,52 @@ def ht_func(ht, mu, sigma_eta):
     assert((np.isnan(alpha.any())==False))
     return ht_new
 #--------------------
-#         LIKELIHOOD FUNCTION
+#         EXPONENT OF LIKELIHOOD FUNCTION AND PRIOR
 #--------------------
-#def likelihood_func(ht,mu,var):
-##    f_et_ot = -0.5*((ht) + ((y_t**2)/np.exp(ht)))
-##    f_ht_theta = -0.5*(np.log(var) + ((ht - mu)**2/var))
-##    y = (f_et_ot + f_ht_theta)   
-#    i = np.sum(-0.5*ht - (y_t**2/(2*np.exp(ht))) - \
-#        0.5*np.log(var) - (ht-mu)**2/(2*var))
-#    y = i - np.log(var)   
-#    return y
-def likelihood_func(ht,mu,var):  
-    y= np.sum(-(ht/2) + ((y_t**2/2)*np.exp(-ht)) +\
+def likelihood_prior_exp(ht,mu,var,y_t):  
+    y= np.sum(-(ht/2) - ((y_t**2/2)*np.exp(-ht)) +\
          - ((ht - mu)**2/(2*var))) +(-(T/2)-1)*np.log(var)
-#    y = np.sum(-0.5*ht - (y_t**2/(2*np.exp(ht))) \
-#         - (ht-mu)**2/(2*var)) - ((T/2)-1)*np.log(var)
-    #assert((np.isnan(y)==False))
     return y
 #--------------------
 #         GlOBAL ACCEPT REJECT STEP
 #--------------------  
-previous = likelihood_func(ht_guess, mu_guess,(sigma_eta_guess**2))
+previous = likelihood_prior_exp(ht_guess, mu_guess,(sigma_eta_guess**2),y_t)
 
 count = 0
 for i in range(N):
     new_var = var_eta_func(ht_guess, mu_guess)
     new_mu = mu_func(ht_guess, sigma_eta_guess)
     new_ht = ht_func(ht_guess, mu_guess, sigma_eta_guess)
-    current = likelihood_func(new_ht, new_mu, new_var)
-    mean[i] = new_mu
-    stdv[i] = new_var
+    current = likelihood_prior_exp(new_ht, new_mu, new_var,y_t)
+
     exponent = current - previous
     correction = np.exp(exponent) 
     alpha = min(1, correction)
-    assert((np.isnan(correction)==False))
-    #assert((correction<=1) and (correction>=0))
     
-    if ((np.random.uniform(0,1)<= alpha) or i<10):
+    assert((np.isnan(correction)==False))
+    
+    if ((np.random.uniform(0,1)<= alpha)):
         previous = current
         ht_guess = new_ht 
         mu_guess = new_mu 
         sigma_eta_guess = np.sqrt(new_var)
         count+= 1
+        mean[i] = new_mu
+        stdv[i] = new_var
     else:
         previous = previous
         ht_guess = ht_guess
         mu_guess = mu_guess
         sigma_eta_guess = sigma_eta_guess
+        mean[i] = mu_guess
+        stdv[i] = sigma_eta_guess
 ##--------------------
 ##         PLOT GRAPHS
 ##--------------------  
 t = np.linspace(0,N,N)  
 py.figure(figsize=(20,10))
 #py.xlim(t[1*N/5],N)
+py.plot(t,stdv)
 py.plot(t,mean)
 py.show()
 
